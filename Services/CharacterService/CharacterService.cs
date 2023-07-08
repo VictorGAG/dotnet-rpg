@@ -4,24 +4,32 @@ namespace dotnet_rpg.Services.CharacterService
   {
     private static List<Character> characters = new List<Character>();
 
-    public async Task<List<Character>> AddCharacter(Character newCharacter)
+    public async Task<ServiceResponse<List<Character>>> AddCharacter(Character newCharacter)
     {
+      var servicerResponse = new ServiceResponse<List<Character>>();
+      
       characters.Add(newCharacter);
-      return characters;
+      servicerResponse.Data = characters;
+
+      return servicerResponse;
     }
 
-    public async Task<List<Character>> GetAllCharacters()
+    public async Task<ServiceResponse<List<Character>>> GetAllCharacters()
     {
-      return characters;
+      var servicerResponse = new ServiceResponse<List<Character>>();
+      servicerResponse.Data = characters;
+
+      return servicerResponse;
     }
 
-    public async Task<Character> GetCharacterById(int id)
+    public async Task<ServiceResponse<Character>> GetCharacterById(int id)
     {
+      var servicerResponse = new ServiceResponse<Character>();
+
       var character = characters.FirstOrDefault(c => c.Id == id);
-      if (character is not null)
-        return character;
+      servicerResponse.Data = character;
 
-      throw new Exception("Character not found");
+      return servicerResponse;
     }
   }
 }
