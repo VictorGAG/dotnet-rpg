@@ -2,23 +2,24 @@ namespace dotnet_rpg.Services.CharacterService
 {
   public class CharacterService : ICharacterService
   {
-    private static List<Character> characters = new List<Character>();
     private readonly IMapper _mapper;
+    private readonly DataContext _context;
 
-    public CharacterService(IMapper mapper)
+    public CharacterService(IMapper mapper, DataContext context)
     {
       _mapper = mapper;
+      _context = context;
     }
 
     public async Task<ServiceResponse<List<CharacterResponse>>> AddCharacter(CharacterRequest newCharacter)
     {
       var servicerResponse = new ServiceResponse<List<CharacterResponse>>();
       var character = _mapper.Map<Character>(newCharacter);
-      
-      if (characters.Count > 0)
-        character.Id = characters.Max(c => c.Id) + 1;
 
-      characters.Add(character);
+      await _context.Characters.AddAsync(character);
+      await _context.SaveChangesAsync();
+      var characters = await _context.Characters.ToListAsync();
+
       servicerResponse.Data = characters.Select(c => _mapper.Map<CharacterResponse>(c)).ToList();
 
       return servicerResponse;
@@ -28,12 +29,14 @@ namespace dotnet_rpg.Services.CharacterService
     {
       var servicerResponse = new ServiceResponse<List<CharacterResponse>>();
       try {
-        var character = characters.First(c => c.Id == id);
+        var character = _context.Characters.First(c => c.Id == id);
         if (character == null)
           throw new Exception($"Character with Id '{id}' not found.");
 
-        characters.Remove(character);
-        servicerResponse.Data = characters.Select(c => _mapper.Map<CharacterResponse>(c)).ToList();
+        _context.Characters.Remove(character);
+        await _context.SaveChangesAsync();
+
+        servicerResponse.Data = _context.Characters.Select(c => _mapper.Map<CharacterResponse>(c)).ToList();
       }
       catch (Exception ex)
       {
@@ -46,8 +49,9 @@ namespace dotnet_rpg.Services.CharacterService
     public async Task<ServiceResponse<List<CharacterResponse>>> GetAllCharacters()
     {
       var servicerResponse = new ServiceResponse<List<CharacterResponse>>();
-      servicerResponse.Data = characters.Select(c => _mapper.Map<CharacterResponse>(c)).ToList();
+      var dbCharacters = await _context.Characters.ToListAsync();
 
+      servicerResponse.Data = dbCharacters.Select(c => _mapper.Map<CharacterResponse>(c)).ToList();
       return servicerResponse;
     }
 
@@ -55,11 +59,11 @@ namespace dotnet_rpg.Services.CharacterService
     {
       var servicerResponse = new ServiceResponse<CharacterResponse>();
       try {
-        var character = characters.FirstOrDefault(c => c.Id == id);
-        if (character == null)
+        var dbCharacter = await _context.Characters.FirstOrDefaultAsync(c => c.Id == id);
+        if (dbCharacter == null)
           throw new Exception($"Character with Id '{id}' not found.");
           
-        servicerResponse.Data = _mapper.Map<CharacterResponse>(character);
+        servicerResponse.Data = _mapper.Map<CharacterResponse>(dbCharacter);
       }
       catch (Exception ex) {
         servicerResponse.Message = ex.Message;
@@ -73,12 +77,15 @@ namespace dotnet_rpg.Services.CharacterService
     {
       var servicerResponse = new ServiceResponse<CharacterResponse>();
       try {
-        var character = characters.FirstOrDefault(c => c.Id == updateCharacter.Id);
-        if (character == null)
+        var dbCharacter = await _context.Characters.FirstOrDefaultAsync(c => c.Id == updateCharacter.Id);
+        if (dbCharacter == null)
           throw new Exception($"Character with Id '{updateCharacter.Id}' not found.");
 
-        character = _mapper.Map(updateCharacter, character);
-        servicerResponse.Data = _mapper.Map<CharacterResponse>(character);
+        dbCharacter = _mapper.Map(updateCharacter, dbCharacter);
+        _context.Characters.Update(dbCharacter);
+        await _context.SaveChangesAsync();
+
+        servicerResponse.Data = _mapper.Map<CharacterResponse>(dbCharacter);
       }
       catch (Exception ex)
       {
